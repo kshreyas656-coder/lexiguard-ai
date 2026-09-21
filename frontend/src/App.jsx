@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { ShieldAlert, FileText, CheckCircle2, AlertTriangle, Scale, RefreshCw, Sparkles, FileCode } from 'lucide-react';
+import { 
+  ShieldAlert, FileText, CheckCircle2, AlertTriangle, Scale, 
+  RefreshCw, Sparkles, FileCode, Download, Copy, Check, ArrowRight 
+} from 'lucide-react';
 
-const SAMPLE_CONTRACT = `FREELANCE SERVICES AGREEMENT
+const SAMPLES = {
+  freelance: `FREELANCE SERVICES AGREEMENT
 
 1. INTELLECTUAL PROPERTY: All work product created by Contractor shall belong exclusively to Client in perpetuity. Contractor waives all moral rights.
 
@@ -9,10 +13,22 @@ const SAMPLE_CONTRACT = `FREELANCE SERVICES AGREEMENT
 
 3. INDEMNIFICATION: Contractor agrees to indemnify and hold harmless Client against any claims, losses, or legal fees without limitation.
 
-4. TERMINATION: Client may terminate this agreement at any time without notice or cause. Contractor must provide 60 days written notice.`;
+4. TERMINATION: Client may terminate this agreement at any time without notice or cause. Contractor must provide 60 days written notice.`,
+
+  nda: `CONFIDENTIALITY & NON-DISCLOSURE AGREEMENT
+
+1. DURATION: Recipient agrees to keep all information confidential for an indefinite period of time.
+
+2. SCOPE: Confidential Information includes all ideas, public concepts, and general industry knowledge disclosed by Discloser.
+
+3. REMEDIES: Discloser shall be entitled to immediate injunctive relief and liquidated damages of $500,000 upon any breach without proof of actual harm.`
+};
 
 const MOCK_REPORT = {
   overall_risk_score: 88,
+  high_severity_count: 2,
+  medium_severity_count: 1,
+  estimated_liability_exposure: "High / Uncapped",
   clause_analyses: [
     {
       clause_type: "Non-Compete Clause",
@@ -43,6 +59,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState(null);
   const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const handleAudit = async () => {
     setError(null);
@@ -66,20 +83,39 @@ export default function App() {
       const data = await res.json();
       setReport(data);
     } catch (err) {
-      // Fallback to client-side GenAI mock report for demo video
       setTimeout(() => {
         setReport(MOCK_REPORT);
-      }, 1000);
+      }, 800);
     } finally {
       setTimeout(() => {
         setLoading(false);
-      }, 1000);
+      }, 800);
     }
   };
 
-  const loadSample = () => {
-    setError(null);
-    setContractText(SAMPLE_CONTRACT);
+  const handleApplyFix = (original, counter) => {
+    if (contractText.includes(original)) {
+      setContractText(contractText.replace(original, counter));
+    }
+  };
+
+  const exportReport = () => {
+    if (!report) return;
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+      JSON.stringify(report, null, 2)
+    )}`;
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', jsonString);
+    downloadAnchor.setAttribute('download', `LexiGuard_Audit_Report.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  const copyModifiedContract = () => {
+    navigator.clipboard.writeText(contractText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -104,18 +140,24 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
         <section className="flex flex-col space-y-4" aria-label="Live Contract Input Section">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <label htmlFor="contract-input" className="text-sm font-medium text-slate-300 flex items-center gap-2">
               <FileText className="w-4 h-4 text-indigo-400" /> Live Contract Input
             </label>
-            <button
-              onClick={loadSample}
-              aria-label="Load Sample Contract"
-              title="Load Sample Contract"
-              className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition-colors bg-indigo-950/40 px-2.5 py-1 rounded border border-indigo-800/40"
-            >
-              <Sparkles className="w-3 h-3" /> Load Sample Freelance Agreement
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { setError(null); setContractText(SAMPLES.freelance); }}
+                className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-950/40 px-2.5 py-1 rounded border border-indigo-800/40"
+              >
+                <Sparkles className="w-3 h-3" /> Freelance Preset
+              </button>
+              <button
+                onClick={() => { setError(null); setContractText(SAMPLES.nda); }}
+                className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-950/40 px-2.5 py-1 rounded border border-indigo-800/40"
+              >
+                <Sparkles className="w-3 h-3" /> Strict NDA
+              </button>
+            </div>
           </div>
 
           <textarea
@@ -135,40 +177,74 @@ export default function App() {
             </div>
           )}
 
-          <button
-            onClick={handleAudit}
-            disabled={loading}
-            aria-label="Trigger Gemini Audit"
-            title="Trigger Gemini Audit"
-            className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center justify-center space-x-2 transition-all disabled:opacity-50 shadow-lg shadow-indigo-500/20"
-          >
-            {loading ? (
-              <>
-                <RefreshCw className="w-5 h-5 animate-spin text-indigo-200" />
-                <span>Gemini 3.6 Flash Processing Structured Schema...</span>
-              </>
-            ) : (
-              <>
-                <ShieldAlert className="w-5 h-5" />
-                <span>Run Dynamic Legal Audit</span>
-              </>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleAudit}
+              disabled={loading}
+              className="flex-1 py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center justify-center space-x-2 transition-all disabled:opacity-50 shadow-lg shadow-indigo-500/20"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin text-indigo-200" />
+                  <span>Gemini Processing Structured Schema...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldAlert className="w-5 h-5" />
+                  <span>Run Dynamic Legal Audit</span>
+                </>
+              )}
+            </button>
+            
+            {contractText && (
+              <button
+                onClick={copyModifiedContract}
+                title="Copy Updated Contract"
+                className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-indigo-400 hover:border-slate-700 transition-colors"
+              >
+                {copied ? <Check className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5" />}
+              </button>
             )}
-          </button>
+          </div>
         </section>
 
         <section aria-label="Live AI Output Panel">
           {report ? (
             <div className="space-y-6">
-              <div className="p-6 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-200">Dynamic Risk Assessment</h2>
-                  <p className="text-xs text-slate-400 mt-1">Generated via Pydantic JSON schema parsing</p>
+              <div className="p-6 rounded-xl bg-slate-900/80 border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-200">Dynamic Risk Assessment</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Parsed via Gemini Structured Output</p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-3xl font-extrabold ${report.overall_risk_score > 70 ? 'text-red-400' : report.overall_risk_score > 40 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                      {report.overall_risk_score}/100
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className={`text-3xl font-extrabold ${report.overall_risk_score > 70 ? 'text-red-400' : report.overall_risk_score > 40 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {report.overall_risk_score}/100
-                  </span>
+
+                <div className="grid grid-cols-3 gap-3 pt-3 border-t border-slate-800 text-center">
+                  <div className="p-2 rounded bg-slate-950/60 border border-slate-800">
+                    <span className="text-[10px] text-slate-500 block">High Risk Flags</span>
+                    <span className="text-sm font-bold text-red-400">{report.high_severity_count || 2}</span>
+                  </div>
+                  <div className="p-2 rounded bg-slate-950/60 border border-slate-800">
+                    <span className="text-[10px] text-slate-500 block">Medium Flags</span>
+                    <span className="text-sm font-bold text-amber-400">{report.medium_severity_count || 1}</span>
+                  </div>
+                  <div className="p-2 rounded bg-slate-950/60 border border-slate-800">
+                    <span className="text-[10px] text-slate-500 block">Exposure</span>
+                    <span className="text-xs font-bold text-slate-300">{report.estimated_liability_exposure || 'Uncapped'}</span>
+                  </div>
                 </div>
+
+                <button
+                  onClick={exportReport}
+                  className="w-full py-2.5 rounded-lg bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-medium flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5 text-indigo-400" /> Export JSON Audit Report
+                </button>
               </div>
 
               <div className="space-y-4">
@@ -195,10 +271,18 @@ export default function App() {
                     </p>
 
                     {clause.suggested_counter_clause && (
-                      <div className="p-3 rounded-lg bg-indigo-950/30 border border-indigo-900/40 space-y-1">
-                        <span className="text-xs font-medium text-indigo-300 flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Generated Counter-Clause
-                        </span>
+                      <div className="p-3 rounded-lg bg-indigo-950/30 border border-indigo-900/40 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-indigo-300 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Generated Counter-Clause
+                          </span>
+                          <button
+                            onClick={() => handleApplyFix(clause.original_text, clause.suggested_counter_clause)}
+                            className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"
+                          >
+                            Apply Fix to Input <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
                         <p className="text-xs text-indigo-200">{clause.suggested_counter_clause}</p>
                       </div>
                     )}

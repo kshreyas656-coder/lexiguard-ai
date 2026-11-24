@@ -14,3 +14,4 @@ LexiGuard AI is an automated contract intelligence platform built with Gemini to
 - **Frontend**: React (Vite), Tailwind CSS, Lucide Icons
 
 *Disclaimer: LexiGuard AI provides informational assistance and is not certified legal counsel.*
+WH2XR7
